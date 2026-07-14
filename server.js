@@ -1,23 +1,108 @@
-// 1. เรียกใช้งาน Module ที่ชื่อว่า 'http' ซึ่งเป็นระบบพื้นฐานของ Node.js สําหรับทําเซิร์ฟเวอร์
- const http = require('http');
+const http = require('http');
 
- // 2. กําหนดช่องทาง (Port) ที่เซิร์ฟเวอร์จะใช์สื่อสาร โดยให้ใช้ของที่ Cloud กําหนดมา (process.env.PORT) ถ้าไม่มีให้ใช้ 3000
 const port = process.env.PORT || 3000;
- 
- // 3. สร้างเครื่องแม่ข่าย (Server) ที่คอยรับคําขอ (req) และตอบกลับ (res)
-  const server = http.createServer((req, res) => {
- 
- // 3.1 ตั้งรหัสสถานะ 200 หมายถึง "ทํางานสำเร็จ (OK)"
+
+const server = http.createServer((req, res) => {
   res.statusCode = 200;
 
- // 3.2 บอกเบราว์เซอร์ของผู้ใช้ว่า สิ่งที่ส่งกลับไปคือไฟล์ข้อความแบบ HTML และรองรับ ภาษาไทย (utf-8)
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
- 
-// 3.3 ส่งข้อมูลหน้าเว็บกลับไปหาผู้ใช้ (*** ให้นักศึกษาแก้ชื่อ-นามสกุลตรงนี้ ***)
-  res.end('<h1>สวัสดีค่ะ! นี่คือ Web Server ของ [นายเกิดไชย์ พรหมบรรดาโชค รหัสนักศึกษา69319011248] </h1><p>เครื่องแม่ข่ายทํางานปกติบนระบบ Railway แล้วครับผม!</p>');
- });
- 
- // 4. สั่งให้เซิร์ฟเวอร์เริ่มต้นเปิดรับฟังการเชื่อมต่อตาม Port ที่กําหนดไว้
-  server.listen(port, () => {
- console.log(`Server is running! เครื่องแม่ข่ายเปิดทํางานแล้วที่ช่องทาง: ${port}`);
- });
+
+  res.end(`
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+      <title>เว็บไซต์ของแทน</title>
+
+      <style>
+        body {
+          margin: 0;
+          min-height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          font-family: Arial, sans-serif;
+          text-align: center;
+          background: linear-gradient(135deg, #bde7ff, #d8c4ff, #ffd6eb);
+        }
+
+        .box {
+          width: 70%;
+          max-width: 600px;
+          background-color: white;
+          padding: 35px;
+          border-radius: 30px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+          border: 5px solid #e4d5ff;
+        }
+
+        h1 {
+          color: #7754c7;
+          font-size: 32px;
+        }
+
+        h2 {
+          color: #ff69a6;
+        }
+
+        p {
+          color: #555555;
+          font-size: 18px;
+          line-height: 1.8;
+        }
+
+        .name {
+          background-color: #f1e9ff;
+          padding: 15px;
+          border-radius: 20px;
+          color: #6948b5;
+          font-weight: bold;
+        }
+
+        .cartoon {
+          font-size: 50px;
+        }
+
+        .decoration {
+          margin-top: 20px;
+          font-size: 28px;
+        }
+      </style>
+    </head>
+
+    <body>
+      <div class="box">
+
+        <div class="cartoon">✨</div>
+
+        <h1>ยินดีต้อนรับเข้าสู่ Web Server</h1>
+
+        <h2>สวัสดีครับ ชื่อเล่นแทน 💕</h2>
+
+        <p>
+          เว็บไซต์ของฉันทำงานด้วยระบบ Node.js<br>
+          และเผยแพร่ผ่าน Railway
+        </p>
+
+        <div class="name">
+          👩‍💻 จัดทำโดย นายเกิดไชย์ พรหมบรรดาโชค<br>
+          รหัสนักศึกษา 69319011248
+        </div>
+
+        <p>ขอบคุณที่เข้ามาเยี่ยมชมเว็บไซต์ของแทนนะครัช 😀</p>
+
+        <div class="decoration">
+          ☁️ 😊🤢😁😀✨💕 ☁️
+        </div>
+
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+server.listen(port, () => {
+  console.log(`Server is running on port: ${port}`);
+});
