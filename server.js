@@ -20,5 +20,5 @@ res.end('<h1>สวัสดีครับ! นี่คือ Web Server ข�
 
 // 4. สั่งให้เซิร์ฟเวอร์เริ่มต้นเปิดรับฟังการเชื่อมต่อตาม Port ที่กําหนดไว้
 server.listen(port, () => {
-console.log('Server is running! เครื่องแม่ข่ายเปิดทํางานแล้วที่ช่องทาง: Sport}');
+console.log(`Server is running! เครื่องแม่ข่ายเปิดทํางานแล้วที่ช่องทาง: Sport}`);
 });
