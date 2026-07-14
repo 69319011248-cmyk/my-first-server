@@ -7,6 +7,7 @@ const server = http.createServer((req, res) => {
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
+  // เริ่มต้นด้วยเครื่องหมาย backtick (` )
   res.end(`
     <!DOCTYPE html>
     <html lang="th">
@@ -100,7 +101,7 @@ const server = http.createServer((req, res) => {
       </div>
     </body>
     </html>
-  `);
+  `); // ปิดด้วย backtick และวงเล็บโค้งให้ถูกต้องตรงนี้
 });
 
 server.listen(port, () => {
