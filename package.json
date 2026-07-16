@@ -1,12 +1,7 @@
 {
-  "name": "my-first-server",
-  "version": "1.0.0",
-  "description": "My first server on Railway",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "express": "^4.21.0"
-  }
-}
+ "name": "my-first-server",
+ "version": "1.0.0",
+ "scripts": {
+ "start": "node server.js"
+ }
+ }
