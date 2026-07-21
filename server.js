@@ -1,9 +1,23 @@
 const http = require('http');
+const { Pool } = require('pg');
 
-const server = http.createServer((req, res) => {
+// ตั้งค่าการเชื่อมต่อ PostgreSQL
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+});
+
+const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
 
-    res.end(`
+    try {
+        // ดึงข้อมูลจากฐานข้อมูล
+        const client = await pool.connect();
+        const result = await client.query('SELECT * FROM students LIMIT 10');
+        client.release();
+        
+        const studentsData = result.rows;
+
+        res.end(`
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -289,6 +303,75 @@ h1.namefire {
     background: #64dcff;
     color: #000a15;
 }
+
+/* ================= DATABASE SCREEN ================= */
+.database-wrap {
+    width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    text-align: center;
+}
+
+.database-wrap h2 {
+    color: #3bb4ff;
+    font-family: 'Impact', sans-serif;
+    margin-top: 0;
+}
+
+.database-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: #0a1a2e;
+    border: 1px solid rgba(59, 180, 255, 0.4);
+}
+
+.database-table th {
+    background: linear-gradient(180deg, #0d4a8b, #062d5a);
+    color: #64dcff;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #3bb4ff;
+    font-family: monospace;
+}
+
+.database-table td {
+    padding: 10px 12px;
+    border-bottom: 1px dashed rgba(59, 180, 255, 0.35);
+    color: #b0e0ff;
+    font-family: monospace;
+    font-size: 13px;
+}
+
+.database-table tr:hover {
+    background: rgba(59, 180, 255, 0.1);
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.nav-buttons button {
+    background: linear-gradient(180deg, #0d4a8b, #062d5a);
+    border: 1px solid #3bb4ff;
+    padding: 8px 20px;
+    color: #64dcff;
+    font-family: 'Impact', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: 0.25s;
+}
+
+.nav-buttons button:hover {
+    background: #0088dd;
+    color: #000a15;
+    box-shadow: 0 0 30px #0088dd;
+}
 </style>
 </head>
 <body>
@@ -325,6 +408,7 @@ h1.namefire {
             <div class="stat-row"><span>DOMAIN</span><b>NARAKA / นรกภูมิ</b></div>
 
             <button class="enter-btn" onclick="goToGame()">ENTER THE ABYSS</button>
+            <button class="enter-btn" style="margin-top: 10px;" onclick="goToDatabase()">VIEW STUDENTS</button>
         </div>
     </div>
 </div>
@@ -342,6 +426,34 @@ h1.namefire {
         <div class="abyss-msg" id="msg">คลิกกองไฟก่อนมันดับ อย่าคลิกโดนเถ้าถ่านสีเทา!</div>
 
         <button class="back-btn" onclick="goToProfile()">RETURN TO GATE</button>
+    </div>
+</div>
+
+<!-- ================= SCREEN 3: DATABASE ================= -->
+<div class="screen hidden" id="databaseScreen">
+    <div class="database-wrap">
+        <h2>📊 STUDENT DATABASE (นักศึกษา)</h2>
+        <table class="database-table">
+            <thead>
+                <tr>
+                    <th>รหัสนักศึกษา</th>
+                    <th>ชื่อ-นามสกุล</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${studentsData.map(row => \`
+                <tr>
+                    <td>\${row.student_id}</td>
+                    <td>\${row.student_name}</td>
+                </tr>
+                \`).join('')}
+            </tbody>
+        </table>
+        
+        <div class="nav-buttons">
+            <button onclick="goToProfile()">RETURN TO GATE</button>
+            <button onclick="goToGame()">ENTER THE ABYSS</button>
+        </div>
     </div>
 </div>
 
@@ -397,11 +509,21 @@ drawEmbers();
 function goToGame() {
     document.getElementById('profileScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
+    document.getElementById('databaseScreen').classList.add('hidden');
     startGame();
 }
+
 function goToProfile() {
-    document.getElementById('gameScreen').classList.add('hidden');
     document.getElementById('profileScreen').classList.remove('hidden');
+    document.getElementById('gameScreen').classList.add('hidden');
+    document.getElementById('databaseScreen').classList.add('hidden');
+    stopGame();
+}
+
+function goToDatabase() {
+    document.getElementById('profileScreen').classList.add('hidden');
+    document.getElementById('gameScreen').classList.add('hidden');
+    document.getElementById('databaseScreen').classList.remove('hidden');
     stopGame();
 }
 
@@ -504,10 +626,46 @@ function loseLife() {
 
 </body>
 </html>
-    `);
+        `);
+    } catch (err) {
+        // กรณีเชื่อมต่อไม่ได้หรือเขียนชื่อตารางผิด
+        console.error(err);
+        res.end(\`
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Error</title>
+<style>
+body {
+    background: #000;
+    color: #ff6b6b;
+    font-family: monospace;
+    padding: 40px;
+    text-align: center;
+}
+h1 { color: #ff6b6b; }
+p { font-size: 16px; }
+</style>
+</head>
+<body>
+<h1>⚠️ เกิดข้อผิดพลาด!</h1>
+<p><strong>ข้อความข้อผิดพลาด:</strong></p>
+<p>\${err.message}</p>
+<p style="margin-top: 20px; color: #64dcff;">ตรวจสอบ:</p>
+<ul style="text-align: left; display: inline-block;">
+    <li>ว่าตัวแปร DATABASE_URL ถูกตั้งค่าแล้ว</li>
+    <li>ว่าตาราง "students" มีอยู่ในฐานข้อมูล</li>
+    <li>ว่าเชื่อมต่อฐานข้อมูล PostgreSQL ได้</li>
+</ul>
+</body>
+</html>
+        \`);
+    }
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Gate of Abyss server is running on port ${PORT}`);
+    console.log(\`🔥 Gate of Abyss server is running on port \${PORT}\`);
+    console.log(\`📊 Connected to PostgreSQL Database\`);
 });
