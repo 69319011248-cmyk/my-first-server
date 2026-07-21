@@ -31,7 +31,7 @@ body {
     align-items: center;
 }
 
-/* ================= พื้นหลัง: ถ่านไฟลอยขึ้นเต็มจอ ================= */
+/* ================= พื้นหลัง: ถ่านไฟลอยขึ้นเต็มจอ (Cool Tone) ================= */
 #emberCanvas {
     position: absolute;
     inset: 0;
@@ -94,22 +94,22 @@ body {
     z-index: 2;
     width: 100%;
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    background: linear-gradient(180deg, #1a0500 0%, #0a0000 100%);
+    background: linear-gradient(180deg, #001a2e 0%, #000a1a 100%);
     padding: 70px 45px;
     text-align: center;
     animation: pulseGlow 3s ease-in-out infinite;
 }
 
 @keyframes pulseGlow {
-    0%, 100% { filter: drop-shadow(0 0 18px rgba(255, 60, 0, 0.35)); }
-    50% { filter: drop-shadow(0 0 34px rgba(255, 120, 0, 0.55)); }
+    0%, 100% { filter: drop-shadow(0 0 18px rgba(0, 150, 255, 0.35)); }
+    50% { filter: drop-shadow(0 0 34px rgba(100, 200, 255, 0.55)); }
 }
 
 .rank-tag {
     font-family: monospace;
     font-size: 11px;
     letter-spacing: 5px;
-    color: #ff6a00;
+    color: #00ccff;
     margin-bottom: 6px;
 }
 
@@ -117,7 +117,7 @@ body {
     font-family: 'Impact', sans-serif;
     font-size: 15px;
     letter-spacing: 6px;
-    color: #7a1a00;
+    color: #004d7a;
     margin-bottom: 18px;
 }
 
@@ -131,7 +131,7 @@ body {
 .crest svg {
     width: 100%;
     height: 100%;
-    filter: drop-shadow(0 0 10px rgba(255, 90, 0, 0.7));
+    filter: drop-shadow(0 0 10px rgba(0, 200, 255, 0.7));
 }
 
 h1.namefire {
@@ -139,11 +139,11 @@ h1.namefire {
     font-size: 30px;
     letter-spacing: 3px;
     margin: 0 0 4px 0;
-    color: #fff2dd;
+    color: #ddf2ff;
     text-shadow:
-        0 0 6px #ffb347,
-        0 0 16px #ff5500,
-        0 0 30px #ff2200;
+        0 0 6px #6ab7ff,
+        0 0 16px #0099ff,
+        0 0 30px #0055ff;
     animation: flicker 2.6s infinite;
 }
 
@@ -158,7 +158,7 @@ h1.namefire {
 
 .thainame {
     font-size: 17px;
-    color: #ffcf9e;
+    color: #9ecfff;
     margin-bottom: 22px;
     letter-spacing: 1px;
 }
@@ -167,24 +167,24 @@ h1.namefire {
     display: flex;
     justify-content: space-between;
     padding: 10px 6px;
-    border-bottom: 1px dashed rgba(255, 100, 0, 0.25);
+    border-bottom: 1px dashed rgba(0, 150, 255, 0.25);
     font-family: monospace;
     font-size: 12px;
-    color: #a56b4a;
+    color: #4a8ab5;
 }
 
 .stat-row b {
-    color: #ffdcb0;
+    color: #b0d8ff;
     font-size: 14px;
     letter-spacing: 1px;
 }
 
 .enter-btn {
     margin-top: 28px;
-    background: linear-gradient(180deg, #3a0800, #1a0300);
-    border: 1px solid #ff5500;
+    background: linear-gradient(180deg, #003a6b, #001a3a);
+    border: 1px solid #0099ff;
     padding: 12px 30px;
-    color: #ffb347;
+    color: #6ab7ff;
     font-family: 'Impact', sans-serif;
     font-size: 16px;
     letter-spacing: 3px;
@@ -194,9 +194,9 @@ h1.namefire {
 }
 
 .enter-btn:hover {
-    background: #ff3300;
-    color: #150000;
-    box-shadow: 0 0 30px #ff3300;
+    background: #0066cc;
+    color: #000015;
+    box-shadow: 0 0 30px #0066cc;
 }
 
 /* ================= GAME SCREEN ================= */
@@ -209,14 +209,14 @@ h1.namefire {
     display: flex;
     justify-content: space-between;
     font-family: monospace;
-    color: #ff6a00;
+    color: #00ccff;
     font-size: 13px;
     margin-bottom: 10px;
     padding: 0 6px;
 }
 
 .abyss-header b {
-    color: #ffdcb0;
+    color: #b0d8ff;
 }
 
 #grid3x3 {
@@ -226,17 +226,17 @@ h1.namefire {
     width: 340px;
     margin: 0 auto;
     padding: 18px;
-    background: #0a0202;
-    border: 1px solid rgba(255, 90, 0, 0.3);
-    box-shadow: inset 0 0 25px rgba(120, 0, 0, 0.6);
+    background: #0a0a1a;
+    border: 1px solid rgba(0, 150, 255, 0.3);
+    box-shadow: inset 0 0 25px rgba(0, 50, 120, 0.6);
     border-radius: 10px;
 }
 
 .hole {
     aspect-ratio: 1;
-    background: radial-gradient(circle at 50% 60%, #1c0400, #000);
+    background: radial-gradient(circle at 50% 60%, #001c4d, #000);
     border-radius: 50%;
-    border: 2px solid rgba(255, 90, 0, 0.25);
+    border: 2px solid rgba(0, 150, 255, 0.25);
     position: relative;
     cursor: pointer;
     overflow: hidden;
@@ -250,8 +250,8 @@ h1.namefire {
     height: 60%;
     transform: translateX(-50%);
     border-radius: 50% 50% 45% 45%;
-    background: radial-gradient(circle, #ffdd55 0%, #ff6a00 55%, #ff2200 100%);
-    box-shadow: 0 0 18px rgba(255, 120, 0, 0.8);
+    background: radial-gradient(circle, #55ddff 0%, #00aaff 55%, #0033ff 100%);
+    box-shadow: 0 0 18px rgba(0, 170, 255, 0.8);
     transition: bottom 0.15s ease-out;
 }
 
@@ -268,16 +268,16 @@ h1.namefire {
     margin-top: 14px;
     font-family: monospace;
     font-size: 12px;
-    color: #a56b4a;
+    color: #4a8ab5;
     min-height: 16px;
 }
 
 .back-btn {
     margin-top: 18px;
     background: transparent;
-    border: 1px solid #ffb347;
+    border: 1px solid #6ab7ff;
     padding: 8px 26px;
-    color: #ffb347;
+    color: #6ab7ff;
     font-family: 'Impact', sans-serif;
     font-size: 14px;
     letter-spacing: 2px;
@@ -286,8 +286,8 @@ h1.namefire {
 }
 
 .back-btn:hover {
-    background: #ffb347;
-    color: #150000;
+    background: #6ab7ff;
+    color: #000015;
 }
 </style>
 </head>
@@ -301,8 +301,8 @@ h1.namefire {
     <div class="sigil-wrap">
         <svg class="pentagram" viewBox="0 0 100 100">
             <polygon points="50,3 61,38 98,38 68,60 79,95 50,73 21,95 32,60 2,38 39,38"
-                fill="none" stroke="#ff5500" stroke-width="1"/>
-            <circle cx="50" cy="50" r="47" fill="none" stroke="#ff5500" stroke-width="0.6"/>
+                fill="none" stroke="#0099ff" stroke-width="1"/>
+            <circle cx="50" cy="50" r="47" fill="none" stroke="#0099ff" stroke-width="0.6"/>
         </svg>
 
         <div class="panel">
@@ -312,9 +312,9 @@ h1.namefire {
             <div class="crest">
                 <svg viewBox="0 0 100 100">
                     <path d="M50 8 C30 25 20 45 20 62 C20 82 34 94 50 94 C66 94 80 82 80 62 C80 45 70 25 50 8 Z"
-                        fill="none" stroke="#ff6a00" stroke-width="2.5"/>
+                        fill="none" stroke="#00ccff" stroke-width="2.5"/>
                     <path d="M50 30 C40 42 35 54 35 64 C35 76 42 84 50 84 C58 84 65 76 65 64 C65 54 60 42 50 30 Z"
-                        fill="#ff3300" opacity="0.85"/>
+                        fill="#0033ff" opacity="0.85"/>
                 </svg>
             </div>
 
@@ -346,7 +346,7 @@ h1.namefire {
 </div>
 
 <script>
-// ================= EMBER BACKGROUND (ถ่านไฟลอยขึ้น) =================
+// ================= EMBER BACKGROUND (ถ่านไฟลอยขึ้น - Cool Tone) =================
 const canvas = document.getElementById('emberCanvas');
 const ctx = canvas.getContext('2d');
 let W, H;
@@ -366,7 +366,7 @@ function spawnEmber() {
         speed: Math.random() * 1.2 + 0.4,
         drift: (Math.random() - 0.5) * 0.6,
         life: 1,
-        hue: Math.random() > 0.5 ? '255,170,60' : '255,80,0'
+        hue: Math.random() > 0.5 ? '100,200,255' : '0,150,255'
     });
 }
 
@@ -384,7 +384,7 @@ function drawEmbers() {
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
         ctx.fillStyle = \`rgba(\${e.hue}, \${Math.max(e.life, 0)})\`;
         ctx.shadowBlur = 8;
-        ctx.shadowColor = 'rgba(255,120,0,0.6)';
+        ctx.shadowColor = 'rgba(0,150,255,0.6)';
         ctx.fill();
 
         if (e.life <= 0 || e.y < -10) embers.splice(i, 1);
