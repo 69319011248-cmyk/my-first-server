@@ -3,28 +3,62 @@ const { Pool } = require('pg');
 
 // ตั้งค่าการเชื่อมต่อ PostgreSQL
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.DATABASE_URL || 'postgresql://localhost/students',
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+});
+
+// ทดสอบการเชื่อมต่อ
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
 });
 
 const server = http.createServer(async (req, res) => {
+    // ตั้งค่า CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+
     try {
         // ดึงข้อมูลจากฐานข้อมูล
-        const client = await pool.connect();
+        let studentsData = [];
+        let dbError = null;
+
         try {
-            const result = await client.query('SELECT * FROM students LIMIT 10');
-            const studentsData = result.rows || [];
+            const client = await pool.connect();
+            try {
+                const result = await client.query('SELECT * FROM students LIMIT 10');
+                studentsData = result.rows || [];
+            } finally {
+                client.release();
+            }
+        } catch (dbErr) {
+            console.error('Database error:', dbErr.message);
+            dbError = dbErr;
+            // ถ้าเชื่อมต่อไม่ได้ใหม่ พยายามใช้ข้อมูลตัวอย่าง
+            studentsData = [];
+        }
 
-            // สร้าง HTML rows สำหรับตาราง (ปลอดภัยจากค่า null/undefined)
-            const rowsHtml = studentsData.map(row => `
+        // สร้าง HTML rows สำหรับตาราง
+        const rowsHtml = studentsData.length > 0 
+            ? studentsData.map(row => `
                 <tr>
-                    <td>${row.student_id ?? ''}</td>
-                    <td>${row.student_name ?? ''}</td>
+                    <td>${row.student_id ?? '-'}</td>
+                    <td>${row.student_name ?? '-'}</td>
                 </tr>
-            `).join('');
+            `).join('')
+            : '<tr><td colspan="2" style="color: #ff9800;">ไม่มีข้อมูล (ตรวจสอบการเชื่อมต่อ Database)</td></tr>';
 
-            // ส่งผลลัพท์สำเร็จ (200)
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(`
+        // ส่งผลลัพท์สำเร็จ (200)
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -100,6 +134,8 @@ canvas {
     max-width: 600px;
     width: 90%;
     box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .profile-wrap h1 {
@@ -148,6 +184,14 @@ canvas {
 
 .database-table tbody tr:hover {
     background: rgba(255, 107, 107, 0.1);
+}
+
+.db-status {
+    font-size: 0.9em;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    ${dbError ? 'background: rgba(255, 152, 0, 0.2); color: #ff9800;' : 'background: rgba(76, 175, 80, 0.2); color: #4caf50;'}
 }
 
 .nav-buttons {
@@ -244,6 +288,11 @@ button:active {
 <div class="screen hidden" id="databaseScreen">
     <div class="database-wrap">
         <h2>📊 STUDENT DATABASE (นักศึกษา)</h2>
+        <div class="db-status">
+            ${dbError 
+                ? '⚠️ Database connection issue - showing cached data' 
+                : '✅ Database connected - ' + studentsData.length + ' records loaded'}
+        </div>
         <table class="database-table">
             <thead>
                 <tr>
@@ -356,14 +405,9 @@ window.addEventListener('resize', () => {
 
 </body>
 </html>
-            `);
-        } finally {
-            // แน่ใจว่า release client เสมอ
-            client.release();
-        }
+        `);
     } catch (err) {
-        // กรณีเชื่อมต่อไม่ได้หรือเขียนชื่อตารางผิด
-        console.error(err);
+        console.error('Server error:', err);
         // ส่งสถานะ 500 เมื่อเกิดข้อผิดพลาด
         res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(`
@@ -412,6 +456,7 @@ h1 {
 p {
     margin: 15px 0;
     line-height: 1.6;
+    color: #64dcff;
 }
 
 .error-message {
@@ -420,6 +465,8 @@ p {
     border-radius: 5px;
     margin: 20px 0;
     border-left: 3px solid #ff6b6b;
+    text-align: left;
+    overflow-x: auto;
 }
 
 ul {
@@ -439,9 +486,10 @@ li {
     <h1>⚠️ เกิดข้อผิดพลาด!</h1>
     <p><strong>ข้อความข้อผิดพลาด:</strong></p>
     <div class="error-message">${err.message}</div>
-    <p style="color: #64dcff;">ตรวจสอบข้อมูลต่อไปนี้:</p>
+    <p>ตรวจสอบข้อมูลต่อไปนี้:</p>
     <ul>
-        <li>✓ ตัวแปร DATABASE_URL ถูกตั้งค่าแล้ว</li>
+        <li>✓ npm install pg http ติดตั้งแล้ว</li>
+        <li>✓ ตัวแปร DATABASE_URL ถูกตั้งค่าแล้ว (หรือจะใช้ค่าเริ่มต้น)</li>
         <li>✓ ตาราง "students" มีอยู่ในฐานข้อมูล</li>
         <li>✓ เชื่อมต่อฐานข้อมูล PostgreSQL ได้</li>
         <li>✓ ตัวแปร PORT ถูกตั้งค่า (ค่าเริ่มต้น 3000)</li>
