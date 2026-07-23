@@ -1,508 +1,342 @@
-const http = require('http');
+const express = require('express');
 const { Pool } = require('pg');
+const app = express();
+const port = process.env.PORT || 3000;
 
-// ตั้งค่าการเชื่อมต่อ PostgreSQL
+// 1. ตั้งค่าให้ Server อ่านข้อมูลที่ส่งมาจากฟอร์ม (HTML Form) ได้
+app.use(express.urlencoded({ extended: true }));
+
+// 2. ตั้งค่าเชื่อมต่อฐานข้อมูล PostgreSQL
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://localhost/students',
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+  connectionString: process.env.DATABASE_URL,
 });
 
-// ทดสอบการเชื่อมต่อ
-pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
-});
+// ---------------------------------------------------------
+// เส้นทางที่ 1: (GET /) เมื่อเปิดหน้าเว็บหลัก ให้แสดงฟอร์มและตารางข้อมูล
+// ---------------------------------------------------------
+app.get('/', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    // ดึงข้อมูลทั้งหมด เรียงตาม ID
+    const result = await client.query('SELECT * FROM students ORDER BY id ASC');
+    client.release();
 
-const server = http.createServer(async (req, res) => {
-    // ตั้งค่า CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        res.end();
-        return;
-    }
-
-    try {
-        // ดึงข้อมูลจากฐานข้อมูล
-        let studentsData = [];
-        let dbError = null;
-
-        try {
-            const client = await pool.connect();
-            try {
-                const result = await client.query('SELECT * FROM students LIMIT 10');
-                studentsData = result.rows || [];
-            } finally {
-                client.release();
-            }
-        } catch (dbErr) {
-            console.error('Database error:', dbErr.message);
-            dbError = dbErr;
-            // ถ้าเชื่อมต่อไม่ได้ใหม่ พยายามใช้ข้อมูลตัวอย่าง
-            studentsData = [];
-        }
-
-        // สร้าง HTML rows สำหรับตาราง
-        const rowsHtml = studentsData.length > 0 
-            ? studentsData.map(row => `
-                <tr>
-                    <td>${row.student_id ?? '-'}</td>
-                    <td>${row.student_name ?? '-'}</td>
-                </tr>
-            `).join('')
-            : '<tr><td colspan="2" style="color: #ff9800;">ไม่มีข้อมูล (ตรวจสอบการเชื่อมต่อ Database)</td></tr>';
-
-        // ส่งผลลัพท์สำเร็จ (200)
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(`
+    // สร้างหนาเว็บ HTML (มีฟอร์มสำหรับกรอกข้อมูล และตารางแสดงผล)
+    let html = `
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GATE OF ABYSS // KERDCHAI</title>
-
+<title>ระบบจัดการนักศึกษา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-* {
+  :root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #818cf8;
+    --success: #10b981;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Kanit', sans-serif;
     margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    min-height: 100vh;
+  }
 
-html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #000;
-    color: #fff;
-    font-family: 'Arial', sans-serif;
-}
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
 
-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
-
-.vignette {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.7) 100%);
-    z-index: 2;
-    pointer-events: none;
-}
-
-.screen {
-    position: relative;
-    z-index: 3;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out;
-}
-
-.screen.hidden {
-    display: none;
-    opacity: 0;
-}
-
-.profile-wrap, .database-wrap {
-    background: rgba(0, 0, 0, 0.9);
-    border: 3px solid #ff6b6b;
-    border-radius: 10px;
-    padding: 40px;
+  .header {
     text-align: center;
-    max-width: 600px;
-    width: 90%;
-    box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
-    max-height: 90vh;
-    overflow-y: auto;
-}
+    margin-bottom: 30px;
+    color: #ffffff;
+  }
 
-.profile-wrap h1 {
-    font-size: 2.5em;
+  .header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+
+  .header p {
+    font-weight: 300;
+    opacity: 0.9;
+    margin: 0;
+  }
+
+  .card {
+    background: var(--card);
+    padding: 28px 30px;
+    border-radius: 18px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    margin-bottom: 24px;
+  }
+
+  .card h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 0;
     margin-bottom: 20px;
-    color: #ff6b6b;
-    text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
-}
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--border);
+  }
 
-.profile-wrap p {
-    font-size: 1.2em;
-    margin-bottom: 30px;
-    color: #64dcff;
-}
+  form.entry-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+    align-items: end;
+  }
 
-.database-wrap h2 {
-    font-size: 2em;
-    margin-bottom: 30px;
-    color: #ff6b6b;
-    text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
-}
+  .field { display: flex; flex-direction: column; }
 
-.database-table {
+  label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.95rem;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: #f8fafc;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    background: #fff;
+  }
+
+  .btn-add {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, var(--success), #059669);
+    color: white;
+    padding: 13px 20px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 12px rgba(16,185,129,0.35);
+  }
+
+  .btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16,185,129,0.45);
+  }
+
+  table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 30px;
-    background: rgba(0, 0, 0, 0.8);
-}
+    overflow: hidden;
+    border-radius: 12px;
+  }
 
-.database-table thead tr {
-    background: #ff6b6b;
-    color: #000;
-}
-
-.database-table th {
-    padding: 12px;
+  th {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 14px 16px;
     text-align: left;
-    font-weight: bold;
-}
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
 
-.database-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #ff6b6b;
-    color: #64dcff;
-}
+  th:first-child { border-top-left-radius: 10px; }
+  th:last-child { border-top-right-radius: 10px; text-align: center; }
 
-.database-table tbody tr:hover {
-    background: rgba(255, 107, 107, 0.1);
-}
+  td {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+    color: var(--text);
+  }
 
-.db-status {
-    font-size: 0.9em;
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 5px;
-    ${dbError ? 'background: rgba(255, 152, 0, 0.2); color: #ff9800;' : 'background: rgba(76, 175, 80, 0.2); color: #4caf50;'}
-}
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  tr:hover td { background: #eef2ff; }
 
-.nav-buttons {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-button {
-    padding: 12px 30px;
-    font-size: 1em;
-    background: #ff6b6b;
-    color: #000;
-    border: 2px solid #ff6b6b;
-    border-radius: 5px;
+  .btn-delete {
+    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+    color: white;
+    padding: 7px 16px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.85rem;
     cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-}
+    transition: transform 0.15s;
+  }
 
-button:hover {
-    background: #ff5252;
-    box-shadow: 0 0 15px rgba(255, 107, 107, 0.8);
-    transform: scale(1.05);
-}
+  .btn-delete:hover { transform: scale(1.05); }
 
-button:active {
-    transform: scale(0.95);
-}
-
-.game-wrap {
+  .empty-state {
     text-align: center;
-}
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
 
-.game-wrap h2 {
-    font-size: 2em;
-    margin-bottom: 30px;
-    color: #ff6b6b;
-}
-
-.game-content {
-    background: rgba(0, 0, 0, 0.8);
-    border: 2px solid #64dcff;
-    padding: 30px;
-    border-radius: 10px;
-    margin-bottom: 30px;
-    min-height: 300px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.game-content p {
-    font-size: 1.3em;
-    color: #64dcff;
-}
-</style>
-
-</head>
-<body>
-
-<canvas id="emberCanvas"></canvas>
-<div class="vignette"></div>
-
-<!-- PROFILE -->
-<div class="screen" id="profileScreen">
-    <div class="profile-wrap">
-        <h1>⚔️ GATE OF ABYSS ⚔️</h1>
-        <p>ยินดีต้อนรับสู่อาณาจักรแห่งความมืด</p>
-        <div class="nav-buttons">
-            <button onclick="goToGame()">ENTER THE ABYSS</button>
-            <button onclick="goToDatabase()">VIEW DATABASE</button>
-        </div>
-    </div>
-</div>
-
-<!-- GAME -->
-<div class="screen hidden" id="gameScreen">
-    <div class="game-wrap">
-        <h2>⚡ THE ABYSS ⚡</h2>
-        <div class="game-content">
-            <p>🌑 คุณได้เข้าสู่โลกแห่งความมืด 🌑</p>
-        </div>
-        <div class="nav-buttons">
-            <button onclick="goToProfile()">RETURN TO GATE</button>
-            <button onclick="goToDatabase()">VIEW DATABASE</button>
-        </div>
-    </div>
-</div>
-
-<!-- DATABASE -->
-<div class="screen hidden" id="databaseScreen">
-    <div class="database-wrap">
-        <h2>📊 STUDENT DATABASE (นักศึกษา)</h2>
-        <div class="db-status">
-            ${dbError 
-                ? '⚠️ Database connection issue - showing cached data' 
-                : '✅ Database connected - ' + studentsData.length + ' records loaded'}
-        </div>
-        <table class="database-table">
-            <thead>
-                <tr>
-                    <th>รหัสนักศึกษา</th>
-                    <th>ชื่อ-นามสกุล</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rowsHtml}
-            </tbody>
-        </table>
-
-        <div class="nav-buttons">
-            <button onclick="goToProfile()">RETURN TO GATE</button>
-            <button onclick="goToGame()">ENTER THE ABYSS</button>
-        </div>
-    </div>
-</div>
-
-<script>
-// Particle effect on canvas
-const canvas = document.getElementById('emberCanvas');
-const ctx = canvas.getContext('2d');
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let particles = [];
-
-class Particle {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.vx = (Math.random() - 0.5) * 4;
-        this.vy = (Math.random() - 0.5) * 4 - 1;
-        this.life = 1;
-        this.decay = Math.random() * 0.01 + 0.005;
-        this.size = Math.random() * 3 + 1;
-    }
-
-    update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life -= this.decay;
-    }
-
-    draw() {
-        ctx.globalAlpha = this.life;
-        ctx.fillStyle = '#ff6b6b';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-    }
-}
-
-function animateParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (let i = particles.length - 1; i >= 0; i--) {
-        particles[i].update();
-        particles[i].draw();
-        if (particles[i].life <= 0) {
-            particles.splice(i, 1);
-        }
-    }
-
-    requestAnimationFrame(animateParticles);
-}
-
-animateParticles();
-
-document.addEventListener('mousemove', (e) => {
-    for (let i = 0; i < 2; i++) {
-        particles.push(new Particle(e.clientX, e.clientY));
-    }
-});
-
-// Screen navigation
-function hideAllScreens() {
-    document.getElementById('profileScreen').classList.add('hidden');
-    document.getElementById('gameScreen').classList.add('hidden');
-    document.getElementById('databaseScreen').classList.add('hidden');
-}
-
-function goToProfile() {
-    hideAllScreens();
-    document.getElementById('profileScreen').classList.remove('hidden');
-}
-
-function goToGame() {
-    hideAllScreens();
-    document.getElementById('gameScreen').classList.remove('hidden');
-}
-
-function goToDatabase() {
-    hideAllScreens();
-    document.getElementById('databaseScreen').classList.remove('hidden');
-}
-
-// Show profile screen on load
-window.addEventListener('load', goToProfile);
-
-// Handle window resize
-window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-});
-</script>
-
-</body>
-</html>
-        `);
-    } catch (err) {
-        console.error('Server error:', err);
-        // ส่งสถานะ 500 เมื่อเกิดข้อผิดพลาด
-        res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(`
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<title>Error</title>
-<style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-html, body {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-body {
-    background: #000;
-    color: #ff6b6b;
-    font-family: monospace;
-    padding: 40px;
+  .footer {
     text-align: center;
-}
+    color: rgba(255,255,255,0.85);
+    font-size: 0.85rem;
+    margin-top: 10px;
+    font-weight: 300;
+  }
 
-.error-box {
-    border: 3px solid #ff6b6b;
-    padding: 30px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.9);
-    max-width: 600px;
-    box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
-}
+  .footer strong { font-weight: 500; }
 
-h1 {
-    margin-bottom: 20px;
-    text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
-}
-
-p {
-    margin: 15px 0;
-    line-height: 1.6;
-    color: #64dcff;
-}
-
-.error-message {
-    background: rgba(255, 107, 107, 0.1);
-    padding: 15px;
-    border-radius: 5px;
-    margin: 20px 0;
-    border-left: 3px solid #ff6b6b;
-    text-align: left;
-    overflow-x: auto;
-}
-
-ul {
-    text-align: left;
-    display: inline-block;
-    margin-top: 20px;
-    color: #64dcff;
-}
-
-li {
-    margin: 8px 0;
-}
+  @media (max-width: 600px) {
+    form.entry-form { grid-template-columns: 1fr; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tr { margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    td { display: flex; justify-content: space-between; align-items: center; }
+    td::before { content: attr(data-label); font-weight: 500; color: var(--text-muted); }
+  }
 </style>
 </head>
 <body>
-<div class="error-box">
-    <h1>⚠️ เกิดข้อผิดพลาด!</h1>
-    <p><strong>ข้อความข้อผิดพลาด:</strong></p>
-    <div class="error-message">${err.message}</div>
-    <p>ตรวจสอบข้อมูลต่อไปนี้:</p>
-    <ul>
-        <li>✓ npm install pg http ติดตั้งแล้ว</li>
-        <li>✓ ตัวแปร DATABASE_URL ถูกตั้งค่าแล้ว (หรือจะใช้ค่าเริ่มต้น)</li>
-        <li>✓ ตาราง "students" มีอยู่ในฐานข้อมูล</li>
-        <li>✓ เชื่อมต่อฐานข้อมูล PostgreSQL ได้</li>
-        <li>✓ ตัวแปร PORT ถูกตั้งค่า (ค่าเริ่มต้น 3000)</li>
-    </ul>
+<div class="container">
+
+  <div class="header">
+    <h1>🎓 ระบบจัดการนักศึกษา</h1>
+    <p>Student Management System</p>
+  </div>
+
+  <div class="card">
+    <h2>➕ เพิ่มข้อมูลนักศึกษาใหม่</h2>
+    <!-- ฟอร์มนี้จะส่งข้อมูลไปที่ /add ด้วยวิธี POST -->
+    <form action="/add" method="POST" class="entry-form">
+      <div class="field">
+        <label>รหัสนักศึกษา</label>
+        <input type="text" name="student_id" placeholder="กรอกรหัสนักศึกษา" required>
+      </div>
+      <div class="field">
+        <label>ชื่อ-นามสกุล</label>
+        <input type="text" name="student_name" placeholder="กรอกชื่อ-นามสกุล" required>
+      </div>
+      <button type="submit" class="btn-add">บันทึกข้อมูล</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>📋 รายชื่อนักศึกษาในระบบ</h2>
+`;
+
+    if (result.rows.length === 0) {
+      html += `<div class="empty-state">ยังไม่มีข้อมูลนักศึกษาในระบบ</div>`;
+    } else {
+      html += `
+    <table>
+      <thead>
+        <tr><th>ID ระบบ</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th style="text-align:center;">จัดการ</th></tr>
+      </thead>
+      <tbody>
+`;
+      // นำข้อมูลจากฐานข้อมูลมาวนลูปแสดงในตาราง
+      result.rows.forEach(row => {
+        html += `
+        <tr>
+          <td data-label="ID ระบบ">${row.id}</td>
+          <td data-label="รหัสนักศึกษา">${row.student_id}</td>
+          <td data-label="ชื่อ-นามสกุล">${row.student_name}</td>
+          <td data-label="จัดการ" style="text-align: center;">
+            <!-- ปุ่มลบ จะส่ง id ไปที่ /delete -->
+            <form action="/delete" method="POST" style="margin:0;">
+              <input type="hidden" name="id" value="${row.id}">
+              <button type="submit" class="btn-delete" onclick="return confirm('ยืนยันการลบข้อมูลนี้?')">🗑️ ลบ</button>
+            </form>
+          </td>
+        </tr>
+`;
+      });
+      html += `
+      </tbody>
+    </table>
+`;
+    }
+
+    html += `
+  </div>
+
+  <div class="footer">
+    จัดทำโดย <strong>นายเกิดไชย์ พรหมบรรดาโชค</strong> &nbsp;|&nbsp; รหัสนักศึกษา 69319011248
+  </div>
+
 </div>
 </body>
 </html>
-        `);
-    }
+`;
+    res.send(html);
+  } catch (err) {
+    res.send(`เกิดข้อผิดพลาด: ${err.message}`);
+  }
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🔥 Gate of Abyss server is running on port ${PORT}`);
-    console.log(`📍 Open your browser: http://localhost:${PORT}`);
+// ---------------------------------------------------------
+// เส้นทางที่ 2: (POST /add) รับข้อมูลจากฟอร์มมาบันทึกลงฐานข้อมูล
+// ---------------------------------------------------------
+app.post('/add', async (req, res) => {
+  // รับค่ามาจากช่อง input ที่ตั้งชื่อ name="student_id" และ name="student_name"
+  const { student_id, student_name } = req.body;
+  try {
+    const client = await pool.connect();
+    // คำสั่ง SQL สำหรับ Insert (ใช้ $1, $2 เพื่อป้องกันการโดนแฮกแบบ SQL Injection)
+    await client.query('INSERT INTO students (student_id, student_name) VALUES ($1, $2)', [student_id, student_name]);
+    client.release();
+    res.redirect('/'); // บันทึกเสร็จ ให้เด้งกลับไปหน้าแรก
+  } catch (err) {
+    res.send(`เกิดข้อผิดพลาดในการเพิ่มข้อมูล: ${err.message}`);
+  }
+});
+
+// ---------------------------------------------------------
+// เส้นทางที่ 3: (POST /delete) รับ ID มาเพื่อลบข้อมูล
+// ---------------------------------------------------------
+app.post('/delete', async (req, res) => {
+  const { id } = req.body; // รับ ID ที่ซ่อนไว้ในฟอร์ม
+  try {
+    const client = await pool.connect();
+    // คำสั่ง SQL สำหรับลบข้อมูลตาม ID
+    await client.query('DELETE FROM students WHERE id = $1', [id]);
+    client.release();
+    res.redirect('/'); // ลบเสร็จ ให้เด้งกลับไปหน้าแรก
+  } catch (err) {
+    res.send(`เกิดข้อผิดพลาดในการลบข้อมูล: ${err.message}`);
+  }
+});
+
+// สั่งให้ Server เริ่มทำงาน
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
