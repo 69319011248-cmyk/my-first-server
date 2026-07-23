@@ -15,7 +15,7 @@ app.get('/', async (req, res) => {
   try {
     const client = await pool.connect();
     // ดึงข้อมูลทั้งหมด เรียงตาม ID
-    const result = await client.query('SELECT * FROM students ORDER BY id ASC');
+    const result = await client.query('SELECT * FROM student ORDER BY id ASC');
     client.release();
     // สร้างหน้าเว็บ HTML (มีฟอร์มสำหรับกรอกข้อมูล และตารางแสดงผล) - สไตล์นักบอล ⚽
     let html = `
@@ -238,7 +238,7 @@ app.post('/add', async (req, res) => {
   try {
     const client = await pool.connect();
     // คำสั่ง SQL สำหรับ Insert (ใช้ $1, $2 เพื่อป้องกันการโดนแฮกแบบ SQL Injection)
-    await client.query('INSERT INTO students (student_id, student_name) VALUES ($1, $2)', [student_id, student_name]);
+    await client.query('INSERT INTO student (student_id, student_name) VALUES ($1, $2)', [student_id, student_name]);
     client.release();
     res.redirect('/'); // บันทึกเสร็จ ให้เด้งกลับไปหน้าแรก
   } catch (err) {
@@ -253,7 +253,7 @@ app.post('/delete', async (req, res) => {
   try {
     const client = await pool.connect();
     // คำสั่ง SQL สำหรับลบข้อมูลตาม ID
-    await client.query('DELETE FROM students WHERE id = $1', [id]);
+    await client.query('DELETE FROM student WHERE id = $1', [id]);
     client.release();
     res.redirect('/'); // ลบเสร็จ ให้เด้งกลับไปหน้าแรก
   } catch (err) {
